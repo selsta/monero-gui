@@ -214,23 +214,32 @@ void WalletManager::createWalletFromDeviceAsync(const QString &path, const QStri
 
 QString WalletManager::closeWallet()
 {
+    qInfo() << "WalletManager::closeWallet() start";
     QMutexLocker locker(&m_mutex);
+    qInfo() << "WalletManager::closeWallet() after locker";
     QString result;
     if (m_currentWallet) {
+        qInfo() << "WalletManager::closeWallet() if (m_currentWallet == true)";
         result = m_currentWallet->address(0, 0);
+        qInfo() << "WalletManager::closeWallet() after address result";
         delete m_currentWallet;
+        qInfo() << "WalletManager::closeWallet() after m_currentWallet delete";
     } else {
+        qInfo() << "WalletManager::closeWallet() if (m_currentWallet == false)";
         qCritical() << "Trying to close non existing wallet " << m_currentWallet;
         result = "0";
     }
+    qInfo() << "WalletManager::closeWallet() end";
     return result;
 }
 
 void WalletManager::closeWalletAsync(const QJSValue& callback)
 {
+    qInfo() << "WalletManager::closeWalletAsync() start";
     m_scheduler.run([this] {
         return QJSValueList({closeWallet()});
     }, callback);
+    qInfo() << "WalletManager::closeWalletAsync() end";
 }
 
 bool WalletManager::walletExists(const QString &path) const

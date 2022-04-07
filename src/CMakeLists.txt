@@ -47,8 +47,6 @@ endif()
 
 set(EXECUTABLE_FLAG)
 if(MINGW)
-    set(EXECUTABLE_FLAG WIN32)
-
     set(ICON ${PROJECT_SOURCE_DIR}/images/appicon.ico)
     set(ICON_RC ${CMAKE_CURRENT_BINARY_DIR}/icon.rc)
     set(ICON_RES ${CMAKE_CURRENT_BINARY_DIR}/icon.o)

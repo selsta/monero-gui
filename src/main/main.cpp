@@ -159,6 +159,13 @@ bool isOpenGL = true;
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+    }
+#endif
+
     Q_INIT_RESOURCE(translations);
 
     // platform dependant settings
