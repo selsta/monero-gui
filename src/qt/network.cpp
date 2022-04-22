@@ -112,7 +112,7 @@ void Network::get(const QString &url, const QJSValue &callback, const QString &c
             std::string response;
             QString error = get(httpClient, url, response, contentType);
             return QJSValueList({url, QString::fromStdString(response), error});
-        },
+        }, "Network get",
         callback);
 }
 

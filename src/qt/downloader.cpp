@@ -137,7 +137,7 @@ bool Downloader::get(const QString &url, const QString &hash, const QJSValue &ca
                 QString error;
                 auto task = m_scheduler.run([this, &error, &response, &url] {
                     error = m_network.get(m_httpClient, url, response);
-                });
+                }, "Downloader get2");
                 if (!task.first)
                 {
                     return QJSValueList({"failed to start downloading task"});
@@ -175,7 +175,7 @@ bool Downloader::get(const QString &url, const QString &hash, const QJSValue &ca
             }
 
             return QJSValueList({});
-        },
+        }, "Downloader get",
         callback);
 
     return future.first;
@@ -238,5 +238,5 @@ void Downloader::setProxyAddress(QString address)
         QMutexLocker locker(&m_proxyMutex);
         m_proxyAddress = address;
         emit proxyAddressChanged();
-    });
+    }, "Downloader setProxyAddress");
 }

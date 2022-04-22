@@ -138,7 +138,7 @@ void WalletManager::openWalletAsync(const QString &path, const QString &password
 {
     m_scheduler.run([this, path, password, nettype, kdfRounds] {
         emit walletOpened(openWallet(path, password, nettype, kdfRounds));
-    });
+    }, "WalletManager openWallet");
 }
 
 
@@ -209,7 +209,7 @@ void WalletManager::createWalletFromDeviceAsync(const QString &path, const QStri
     m_scheduler.run([this, path, password, nettype, deviceName, restoreHeight, subaddressLookahead, kdfRounds] {
         Wallet *wallet = createWalletFromDevice(path, password, nettype, deviceName, restoreHeight, subaddressLookahead, kdfRounds);
         emit walletCreated(wallet);
-    });
+    }, "WalletManager createWalletFromDevice");
 }
 
 QString WalletManager::closeWallet()
@@ -238,7 +238,7 @@ void WalletManager::closeWalletAsync(const QJSValue& callback)
     qInfo() << "WalletManager::closeWalletAsync() start";
     m_scheduler.run([this] {
         return QJSValueList({closeWallet()});
-    }, callback);
+    }, "WalletManager closeWallet", callback);
     qInfo() << "WalletManager::closeWalletAsync() end";
 }
 
@@ -327,7 +327,7 @@ void WalletManager::setDaemonAddressAsync(const QString &address)
 {
     m_scheduler.run([this, address] {
         m_pimpl->setDaemonAddress(address.toStdString());
-    });
+    }, "WalletManager setDaemonAddress");
 }
 
 bool WalletManager::connected() const
@@ -372,7 +372,7 @@ void WalletManager::miningStatusAsync()
 {
     m_scheduler.run([this] {
         emit miningStatus(isMining());
-    });
+    }, "WalletManager miningStatus");
 }
 
 bool WalletManager::startMining(const QString &address, quint32 threads, bool backgroundMining, bool ignoreBattery)
@@ -541,7 +541,7 @@ void WalletManager::checkUpdatesAsync(
         {
             qCritical() << "Failed to fetch and verify signed hash:" << e.what();
         }
-    });
+    }, "WalletManager checkUpdates");
 }
 
 QString WalletManager::checkUpdates(const QString &software, const QString &subdir) const
@@ -581,7 +581,7 @@ WalletManager::WalletManager(QObject *parent)
 
 WalletManager::~WalletManager()
 {
-    m_scheduler.shutdownWaitForFinished();
+    m_scheduler.shutdownWaitForFinished("~WalletManager");
 }
 
 void WalletManager::onWalletPassphraseNeeded(bool on_device)
@@ -618,5 +618,5 @@ void WalletManager::setProxyAddress(QString address)
             m_proxyAddress = std::move(address);
         }
         emit proxyAddressChanged();
-    });
+    }, "WalletManager setProxyAddress");
 }

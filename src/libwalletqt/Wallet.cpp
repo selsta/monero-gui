@@ -107,7 +107,7 @@ void Wallet::updateConnectionStatusAsync()
         setConnectionStatus(newStatus);
         // Release lock
         m_connectionStatusRunning = false;
-    });
+    }, "Wallet updateConnectionStatus");
 }
 
 Wallet::ConnectionStatus Wallet::connected(bool forceCheck)
@@ -186,7 +186,7 @@ void Wallet::setProxyAddress(QString address)
             m_proxyAddress = address;
         }
         emit proxyAddressChanged();
-    });
+    }, "Wallet setProxy");
 }
 
 bool Wallet::synchronized() const
@@ -221,7 +221,7 @@ void Wallet::storeAsync(const QJSValue &callback, const QString &path /* = "" */
             QMutexLocker locker(&m_asyncMutex);
 
             return QJSValueList({m_walletImpl->store(path.toStdString())});
-        },
+        }, "Wallet store",
         callback);
     if (!future.first)
     {
@@ -298,7 +298,7 @@ void Wallet::initAsync(
         {
             qCritical() << "Failed to initialize the wallet";
         }
-    });
+    }, "Wallet init");
     if (future.first)
     {
         setConnectionStatus(Wallet::ConnectionStatus_Connecting);
@@ -423,7 +423,7 @@ void Wallet::deviceShowAddressAsync(quint32 accountIndex, quint32 addressIndex, 
     m_scheduler.run([this, accountIndex, addressIndex, paymentId] {
         m_walletImpl->deviceShowAddress(accountIndex, addressIndex, paymentId.toStdString());
         emit deviceShowAddressShowed();
-    });
+    }, "Wallet deviceShowAddress");
 }
 
 void Wallet::refreshHeightAsync()
@@ -432,7 +432,7 @@ void Wallet::refreshHeightAsync()
         quint64 daemonHeight;
         QPair<bool, QFuture<void>> daemonHeightFuture = m_scheduler.run([this, &daemonHeight] {
             daemonHeight = daemonBlockChainHeight();
-        });
+        }, "Wallet refreshHeight1");
         if (!daemonHeightFuture.first)
         {
             return;
@@ -441,7 +441,7 @@ void Wallet::refreshHeightAsync()
         quint64 targetHeight;
         QPair<bool, QFuture<void>> targetHeightFuture = m_scheduler.run([this, &targetHeight] {
             targetHeight = daemonBlockChainTargetHeight();
-        });
+        }, "Wallet refreshHeight2");
         if (!targetHeightFuture.first)
         {
             return;
@@ -452,7 +452,7 @@ void Wallet::refreshHeightAsync()
         targetHeightFuture.second.waitForFinished();
 
         emit heightRefreshed(walletHeight, daemonHeight, targetHeight);
-    });
+    }, "Wallet refreshHeight");
 }
 
 quint64 Wallet::blockChainHeight() const
@@ -578,7 +578,7 @@ void Wallet::createTransactionAsync(
     m_scheduler.run([this, destinationAddresses, payment_id, destinationAmounts, mixin_count, priority] {
         PendingTransaction *tx = createTransaction(destinationAddresses, payment_id, destinationAmounts, mixin_count, priority);
         emit transactionCreated(tx, destinationAddresses, payment_id, mixin_count);
-    });
+    }, "Wallet createTransaction");
 }
 
 PendingTransaction *Wallet::createTransactionAll(const QString &dst_addr, const QString &payment_id,
@@ -599,7 +599,7 @@ void Wallet::createTransactionAllAsync(const QString &dst_addr, const QString &p
     m_scheduler.run([this, dst_addr, payment_id, mixin_count, priority] {
         PendingTransaction *tx = createTransactionAll(dst_addr, payment_id, mixin_count, priority);
         emit transactionCreated(tx, {dst_addr}, payment_id, mixin_count);
-    });
+    }, "Wallet createTransactionAll");
 }
 
 PendingTransaction *Wallet::createSweepUnmixableTransaction()
@@ -614,7 +614,7 @@ void Wallet::createSweepUnmixableTransactionAsync()
     m_scheduler.run([this] {
         PendingTransaction *tx = createSweepUnmixableTransaction();
         emit transactionCreated(tx, {""}, "", 0);
-    });
+    }, "Wallet createSweepUnmixableTx");
 }
 
 UnsignedTransaction * Wallet::loadTxFile(const QString &fileName)
@@ -639,7 +639,7 @@ void Wallet::commitTransactionAsync(PendingTransaction *t)
     m_scheduler.run([this, t] {
         auto txIdList = t->txid();  // retrieve before commit
         emit transactionCommitted(t->commit(), t, txIdList);
-    });
+    }, "Wallet commitTransaction");
 }
 
 void Wallet::disposeTransaction(PendingTransaction *t)
@@ -677,7 +677,7 @@ void Wallet::estimateTransactionFeeAsync(
                 destinations,
                 static_cast<Monero::PendingTransaction::Priority>(priority));
             return QJSValueList({QString::fromStdString(Monero::Wallet::displayAmount(fee))});
-        },
+        }, "Wallet estimateFee",
         callback);
 }
 
@@ -782,7 +782,7 @@ void Wallet::getTxKeyAsync(const QString &txid, const QJSValue &callback)
 {
     m_scheduler.run([this, txid] {
         return QJSValueList({txid, getTxKey(txid)});
-    }, callback);
+    }, "Wallet getTxKey", callback);
 }
 
 QString Wallet::checkTxKey(const QString &txid, const QString &tx_key, const QString &address)
@@ -807,7 +807,7 @@ void Wallet::getTxProofAsync(const QString &txid, const QString &address, const 
 {
     m_scheduler.run([this, txid, address, message] {
         return QJSValueList({txid, getTxProof(txid, address, message)});
-    }, callback);
+    }, "Wallet getTxProof", callback);
 }
 
 QString Wallet::checkTxProof(const QString &txid, const QString &address, const QString &message, const QString &signature)
@@ -833,7 +833,7 @@ void Wallet::getSpendProofAsync(const QString &txid, const QString &message, con
 {
     m_scheduler.run([this, txid, message] {
         return QJSValueList({txid, getSpendProof(txid, message)});
-    }, callback);
+    }, "Wallet spendProof", callback);
 }
 
 Q_INVOKABLE QString Wallet::checkSpendProof(const QString &txid, const QString &message, const QString &signature) const
@@ -1153,8 +1153,9 @@ Wallet::~Wallet()
     qDebug("~Wallet: Closing wallet");
 
     pauseRefresh();
+    qDebug("~Wallet: walletImpl -> stop");
     m_walletImpl->stop();
-    m_scheduler.shutdownWaitForFinished();
+    m_scheduler.shutdownWaitForFinished("~Wallet");
 
     //Monero::WalletManagerFactory::getWalletManager()->closeWallet(m_walletImpl);
     if(status() == Status_Critical)
@@ -1177,7 +1178,7 @@ void Wallet::startRefreshThread()
         constexpr const std::chrono::milliseconds intervalResolution{100};
 
         auto last = std::chrono::steady_clock::now();
-        while (!m_scheduler.stopping())
+        while (!m_scheduler.stopping("startRefreshThread"))
         {
             if (m_refreshEnabled)
             {
@@ -1192,7 +1193,7 @@ void Wallet::startRefreshThread()
 
             std::this_thread::sleep_for(intervalResolution);
         }
-    });
+    }, "Wallet startRefreshThread");
     if (!future.first)
     {
         throw std::runtime_error("failed to start auto refresh thread");

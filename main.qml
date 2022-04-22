@@ -258,6 +258,7 @@ ApplicationWindow {
 
         // enable timers
         userInActivityTimer.running = true;
+        fiatPriceTimer.start();
 
         // wallet already opened with wizard, we just need to initialize it
         var wallet_path = persistentSettings.wallet_path;
@@ -304,6 +305,7 @@ ApplicationWindow {
 
         appWindow.walletName = "";
         currentWallet = undefined;
+        fiatPriceTimer.stop();
 
         appWindow.showProcessingSplash(qsTr("Closing wallet..."));
         if (callback) {
@@ -1298,14 +1300,6 @@ ApplicationWindow {
         leftPanel.balanceFiatString = bFiat;
     }
 
-    function fiatTimerStart(){
-        fiatPriceTimer.start();
-    }
-
-    function fiatTimerStop(){
-        fiatPriceTimer.stop();
-    }
-
     function fiatApiError(msg){
         console.log("fiatPriceError: " + msg);
     }
@@ -1363,7 +1357,7 @@ ApplicationWindow {
 
         if(persistentSettings.fiatPriceEnabled){
             appWindow.fiatApiRefresh();
-            appWindow.fiatTimerStart();
+            fiatPriceTimer.start();
         }
 
         const desktopEntryEnabled = (typeof builtWithDesktopEntry != "undefined") && builtWithDesktopEntry;

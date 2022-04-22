@@ -19,37 +19,45 @@ public:
     FutureScheduler(QObject *parent);
     ~FutureScheduler();
 
-    void shutdownWaitForFinished() noexcept;
+    void shutdownWaitForFinished(const QString name) noexcept;
 
-    QPair<bool, QFuture<void>> run(std::function<void()> function) noexcept;
-    QPair<bool, QFuture<QJSValueList>> run(std::function<QJSValueList()> function, const QJSValue &callback);
-    bool stopping() const noexcept;
+    QPair<bool, QFuture<void>> run(std::function<void()> function, const QString name) noexcept;
+    QPair<bool, QFuture<QJSValueList>> run(std::function<QJSValueList()> function, const QString name, const QJSValue &callback);
+    bool stopping(const QString name) const noexcept;
 
 private:
-    bool add() noexcept;
-    void done() noexcept;
+    bool add(const QString name) noexcept;
+    void done(const QString name) noexcept;
 
     template<typename T>
-    QPair<bool, QFuture<T>> execute(std::function<QFuture<T>(QFutureWatcher<T> *)> makeFuture) noexcept
+    QPair<bool, QFuture<T>> execute(std::function<QFuture<T>(QFutureWatcher<T> *)> makeFuture, const QString name) noexcept
     {
-        if (add())
+        qInfo() << name << " " << "FutureScheduler::execute() start";
+        if (add(name))
         {
             try
             {
+                qInfo() << name << " " << "FutureScheduler::execute() inside try";
                 auto *watcher = new QFutureWatcher<T>();
-                connect(watcher, &QFutureWatcher<T>::finished, [watcher] {
+                qInfo() << name << " " << "FutureScheduler::execute() before connect";
+                connect(watcher, &QFutureWatcher<T>::finished, [watcher, name] {
+                    qInfo() << name << " " << "FutureScheduler::execute() before deleteLater";
                     watcher->deleteLater();
                 });
+                qInfo() << name << " " << "FutureScheduler::execute() before setFuture";
                 watcher->setFuture(makeFuture(watcher));
+                qInfo() << name << " " << "FutureScheduler::execute() before return qMakePair";
                 return qMakePair(true, watcher->future());
             }
             catch (const std::exception &exception)
             {
+                qInfo() << name << " " << "FutureScheduler::execute() inside catch";
                 qCritical() << "Failed to schedule async function: " << exception.what();
-                done();
+                done(name);
             }
         }
 
+        qInfo() << name << " " << "FutureScheduler::execute() end";
         return qMakePair(false, QFuture<T>());
     }
 

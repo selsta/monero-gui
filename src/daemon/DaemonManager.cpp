@@ -137,7 +137,7 @@ bool DaemonManager::start(const QString &flags, NetworkType::Type nettype, const
         } else {
             emit daemonStartFailure(tr("Timed out, local node is not responding after %1 seconds").arg(DAEMON_START_TIMEOUT_SECONDS));
         }
-    });
+    }, "DaemonManager startWatcher");
 
     return true;
 }
@@ -149,7 +149,7 @@ void DaemonManager::stopAsync(NetworkType::Type nettype, const QJSValue& callbac
         sendCommand({"exit"}, nettype, message);
 
         return QJSValueList({stopWatcher(nettype)});
-    }, callback);
+    }, "DaemonManager sendCommand", callback);
 
     if (!feature.first)
     {
@@ -253,7 +253,7 @@ void DaemonManager::runningAsync(NetworkType::Type nettype, const QJSValue& call
 { 
     m_scheduler.run([this, nettype] {
         return QJSValueList({running(nettype)});
-    }, callback);
+    }, "DaemonManager running", callback);
 }
 
 bool DaemonManager::sendCommand(const QStringList &cmd, NetworkType::Type nettype, QString &message) const
@@ -283,7 +283,7 @@ void DaemonManager::sendCommandAsync(const QStringList &cmd, NetworkType::Type n
     m_scheduler.run([this, cmd, nettype] {
         QString message;
         return QJSValueList({sendCommand(cmd, nettype, message)});
-    }, callback);
+    }, "DaemonManager sendCommand", callback);
 }
 
 void DaemonManager::exit()
@@ -356,5 +356,5 @@ DaemonManager::DaemonManager(QObject *parent)
 
 DaemonManager::~DaemonManager()
 {
-    m_scheduler.shutdownWaitForFinished();
+    m_scheduler.shutdownWaitForFinished("~DaemonManager");
 }

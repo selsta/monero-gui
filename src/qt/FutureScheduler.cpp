@@ -16,119 +16,119 @@ FutureScheduler::FutureScheduler(QObject *parent)
 FutureScheduler::~FutureScheduler()
 {
     qInfo() << "FutureScheduler::~FutureScheduler start";
-    shutdownWaitForFinished();
+    shutdownWaitForFinished("~FutureScheduler");
     qInfo() << "FutureScheduler::~FutureScheduler end";
 }
 
-void FutureScheduler::shutdownWaitForFinished() noexcept
+void FutureScheduler::shutdownWaitForFinished(const QString name) noexcept
 {
-    qInfo() << "FutureScheduler::shutdownWaitForFinished start";
+    qInfo() << name << " " << "FutureScheduler::shutdownWaitForFinished start";
     QMutexLocker locker(&Mutex);
 
     Stopping = true;
     while (Alive > 0)
     {
-        qInfo() << "FutureScheduler::shutdownWaitForFinished inside while";
+        qInfo() << name << " " << "FutureScheduler::shutdownWaitForFinished inside while";
         Condition.wait(&Mutex);
     }
-    qInfo() << "FutureScheduler::shutdownWaitForFinished end";
+    qInfo() << name << " " << "FutureScheduler::shutdownWaitForFinished end";
 }
 
-QPair<bool, QFuture<void>> FutureScheduler::run(std::function<void()> function) noexcept
+QPair<bool, QFuture<void>> FutureScheduler::run(std::function<void()> function, const QString name) noexcept
 {
-    qInfo() << "FutureScheduler::run(no callback) start";
-    return execute<void>([this, function](QFutureWatcher<void> *) {
-        qInfo() << "FutureScheduler::run(no callback) inside first return";
-        return QtConcurrent::run([this, function] {
-            qInfo() << "FutureScheduler::run(no callback) inside second return";
+    qInfo() << name << " " << "FutureScheduler::run(no callback) start";
+    return execute<void>([this, function, name](QFutureWatcher<void> *) {
+        qInfo() << name << " " << "FutureScheduler::run(no callback) inside first return";
+        return QtConcurrent::run([this, function, name] {
+            qInfo() << name << " " << "FutureScheduler::run(no callback) inside second return";
             try
             {
-                qInfo() << "FutureScheduler::run(no callback) calling function";
+                qInfo() << name << " " << "FutureScheduler::run(no callback) calling function";
                 function();
             }
             catch (const std::exception &exception)
             {
-                qInfo() << "FutureScheduler::run(no callback) calling function failed";
+                qInfo() << name << " " << "FutureScheduler::run(no callback) calling function failed";
                 qWarning() << "Exception thrown from async function: " << exception.what();
             }
-            qInfo() << "FutureScheduler::run(no callback) before done";
-            done();
-            qInfo() << "FutureScheduler::run(no callback) after done";
+            qInfo() << name << " " << "FutureScheduler::run(no callback) before done";
+            done(name);
+            qInfo() << name << " " << "FutureScheduler::run(no callback) after done";
         });
-    });
+    }, name);
 }
 
-QPair<bool, QFuture<QJSValueList>> FutureScheduler::run(std::function<QJSValueList()> function, const QJSValue &callback)
+QPair<bool, QFuture<QJSValueList>> FutureScheduler::run(std::function<QJSValueList()> function, const QString name, const QJSValue &callback)
 {
-    qInfo() << "FutureScheduler::run(callback) start";
+    qInfo() << name << " " << "FutureScheduler::run(callback) start";
     if (!callback.isCallable())
     {
-        qInfo() << "FutureScheduler::run(callback) inside if (!callback.isCallable())";
+        qInfo() << name << " " << "FutureScheduler::run(callback) inside if (!callback.isCallable())";
         throw std::runtime_error("js callback must be callable");
     }
 
-    return execute<QJSValueList>([this, function, callback](QFutureWatcher<QJSValueList> *watcher) {
-        qInfo() << "FutureScheduler::run(callback) inside first return";
-        connect(watcher, &QFutureWatcher<QJSValueList>::finished, [watcher, callback] {
-            qInfo() << "FutureScheduler::run(callback) inside connect";
+    return execute<QJSValueList>([this, function, callback, name](QFutureWatcher<QJSValueList> *watcher) {
+        qInfo() << name << " " << "FutureScheduler::run(callback) inside first return";
+        connect(watcher, &QFutureWatcher<QJSValueList>::finished, [watcher, callback, name] {
+            qInfo() << name << " " << "FutureScheduler::run(callback) inside connect";
             QJSValue(callback).call(watcher->future().result());
         });
-        return QtConcurrent::run([this, function] {
-            qInfo() << "FutureScheduler::run(callback) inside second return";
+        return QtConcurrent::run([this, function, name] {
+            qInfo() << name << " " << "FutureScheduler::run(callback) inside second return";
             QJSValueList result;
             try
             {
-                qInfo() << "FutureScheduler::run(callback) calling function";
+                qInfo() << name << " " << "FutureScheduler::run(callback) calling function";
                 result = function();
             }
             catch (const std::exception &exception)
             { 
-                qInfo() << "FutureScheduler::run(callback) calling function failed";
+                qInfo() << name << " " << "FutureScheduler::run(callback) calling function failed";
                 qWarning() << "Exception thrown from async function: " << exception.what();
             }
-            qInfo() << "FutureScheduler::run(callback) before done";
-            done();
-            qInfo() << "FutureScheduler::run(callback) after done";
+            qInfo() << name << " " << "FutureScheduler::run(callback) before done";
+            done(name);
+            qInfo() << name << " " << "FutureScheduler::run(callback) after done";
             return result;
         });
-    });
+    }, name);
 }
 
-bool FutureScheduler::stopping() const noexcept
+bool FutureScheduler::stopping(const QString name) const noexcept
 {
-    qInfo() << "FutureScheduler::stopping() start";
+    qInfo() << name << " " << "FutureScheduler::stopping() start";
     return Stopping;
 }
 
-bool FutureScheduler::add() noexcept
+bool FutureScheduler::add(const QString name) noexcept
 {
-    qInfo() << "FutureScheduler::add() start";
+    qInfo() << name << " " << "FutureScheduler::add() start";
     QMutexLocker locker(&Mutex);
 
-    qInfo() << "FutureScheduler::add() after locker mutex";
+    qInfo() << name << " " << "FutureScheduler::add() after locker mutex";
     if (Stopping)
     {
-        qInfo() << "FutureScheduler::add() inside if (Stopping)";
+        qInfo() << name << " " << "FutureScheduler::add() inside if (Stopping)";
         return false;
     }
 
-    qInfo() << "FutureScheduler::add() increment alive";
+    qInfo() << name << " " << "FutureScheduler::add() increment alive";
     ++Alive;
-    qInfo() << "FutureScheduler::add() end";
+    qInfo() << name << " " << "FutureScheduler::add() end";
     return true;
 }
 
-void FutureScheduler::done() noexcept
+void FutureScheduler::done(const QString name) noexcept
 {
-    qInfo() << "FutureScheduler::done() start";
+    qInfo() << name << " " << "FutureScheduler::done() start";
     {
-        qInfo() << "FutureScheduler::done() before locker mutex";
+        qInfo() << name << " " << "FutureScheduler::done() before locker mutex";
         QMutexLocker locker(&Mutex);
-        qInfo() << "FutureScheduler::done() after locker mutex";
+        qInfo() << name << " " << "FutureScheduler::done() after locker mutex";
         --Alive;
     }
 
-    qInfo() << "FutureScheduler::done() before wakeAll";
+    qInfo() << name << " " << "FutureScheduler::done() before wakeAll";
     Condition.wakeAll();
-    qInfo() << "FutureScheduler::done() end";
+    qInfo() << name << " " << "FutureScheduler::done() end";
 }
